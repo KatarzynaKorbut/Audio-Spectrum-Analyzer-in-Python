@@ -23,8 +23,8 @@ class Visualizer(object):
         self.traces = dict()
         self.app = QtGui.QApplication(sys.argv)
         self.w = gl.GLViewWidget()
-        self.w.opts['distance'] = 40
-        self.w.setWindowTitle('pyqtgraph example: GLLinePlotItem')
+        self.w.opts["distance"] = 40
+        self.w.setWindowTitle("pyqtgraph example: GLLinePlotItem")
         self.w.setGeometry(0, 110, 1920, 1080)
         self.w.show()
 
@@ -43,12 +43,12 @@ class Visualizer(object):
                 pos=pts,
                 color=pg.glColor((i, self.lines * 1.3)),
                 width=(i + 1) / 10,
-                antialias=True
+                antialias=True,
             )
             self.w.addItem(self.traces[i])
 
     def start(self):
-        if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+        if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
             QtGui.QApplication.instance().exec_()
 
     def set_plotdata(self, name, points, color, width):
@@ -67,13 +67,11 @@ class Visualizer(object):
             pts = np.vstack([self.x, y, sine]).transpose()
 
             self.set_plotdata(
-                name=i, points=pts,
-                color=pg.glColor((i, self.lines * 1.3)),
-                width=3
+                name=i, points=pts, color=pg.glColor((i, self.lines * 1.3)), width=3
             )
-            self.phase -= .0002
+            self.phase -= 0.0002
 
-        print('{:.0f} FPS'.format(1 / (time.time() - stime)))
+        print("{:.0f} FPS".format(1 / (time.time() - stime)))
 
     def animation(self):
         timer = QtCore.QTimer()
@@ -83,6 +81,6 @@ class Visualizer(object):
 
 
 # Start event loop.
-if __name__ == '__main__':
+if __name__ == "__main__":
     v = Visualizer()
     v.animation()

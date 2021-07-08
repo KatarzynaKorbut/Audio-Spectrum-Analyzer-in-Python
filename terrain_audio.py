@@ -27,7 +27,7 @@ class Terrain(object):
         # setup the view window
         self.app = QtGui.QApplication(sys.argv)
         self.window = gl.GLViewWidget()
-        self.window.setWindowTitle('Terrain')
+        self.window.setWindowTitle("Terrain")
         self.window.setGeometry(0, 110, 1920, 1080)
         self.window.setCameraPosition(distance=30, elevation=12)
         self.window.show()
@@ -65,15 +65,15 @@ class Terrain(object):
             drawEdges=True,
             smooth=False,
         )
-        self.mesh1.setGLOptions('additive')
+        self.mesh1.setGLOptions("additive")
         self.window.addItem(self.mesh1)
 
     def mesh(self, offset=0, height=2.5, wf_data=None):
 
         if wf_data is not None:
-            wf_data = struct.unpack(str(2 * self.CHUNK) + 'B', wf_data)
-            wf_data = np.array(wf_data, dtype='b')[::2] + 128
-            wf_data = np.array(wf_data, dtype='int32') - 128
+            wf_data = struct.unpack(str(2 * self.CHUNK) + "B", wf_data)
+            wf_data = np.array(wf_data, dtype="b")[::2] + 128
+            wf_data = np.array(wf_data, dtype="int32") - 128
             wf_data = wf_data * 0.04
             wf_data = wf_data.reshape((len(self.xpoints), len(self.ypoints)))
         else:
@@ -82,31 +82,39 @@ class Terrain(object):
 
         faces = []
         colors = []
-        verts = np.array([
+        verts = np.array(
             [
-                x, y, wf_data[xid][yid] * self.noise.noise2d(x=xid / 5 + offset, y=yid / 5 + offset)
-            ] for xid, x in enumerate(self.xpoints) for yid, y in enumerate(self.ypoints)
-        ], dtype=np.float32)
+                [
+                    x,
+                    y,
+                    wf_data[xid][yid]
+                    * self.noise.noise2d(x=xid / 5 + offset, y=yid / 5 + offset),
+                ]
+                for xid, x in enumerate(self.xpoints)
+                for yid, y in enumerate(self.ypoints)
+            ],
+            dtype=np.float32,
+        )
 
         for yid in range(self.nfaces - 1):
             yoff = yid * self.nfaces
             for xid in range(self.nfaces - 1):
-                faces.append([
-                    xid + yoff,
-                    xid + yoff + self.nfaces,
-                    xid + yoff + self.nfaces + 1,
-                ])
-                faces.append([
-                    xid + yoff,
-                    xid + yoff + 1,
-                    xid + yoff + self.nfaces + 1,
-                ])
-                colors.append([
-                    xid / self.nfaces, 1 - xid / self.nfaces, yid / self.nfaces, 0.7
-                ])
-                colors.append([
-                    xid / self.nfaces, 1 - xid / self.nfaces, yid / self.nfaces, 0.8
-                ])
+                faces.append(
+                    [
+                        xid + yoff,
+                        xid + yoff + self.nfaces,
+                        xid + yoff + self.nfaces + 1,
+                    ]
+                )
+                faces.append(
+                    [xid + yoff, xid + yoff + 1, xid + yoff + self.nfaces + 1,]
+                )
+                colors.append(
+                    [xid / self.nfaces, 1 - xid / self.nfaces, yid / self.nfaces, 0.7]
+                )
+                colors.append(
+                    [xid / self.nfaces, 1 - xid / self.nfaces, yid / self.nfaces, 0.8]
+                )
 
         faces = np.array(faces, dtype=np.uint32)
         colors = np.array(colors, dtype=np.float32)
@@ -128,7 +136,7 @@ class Terrain(object):
         """
         get the graphics window open and setup
         """
-        if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+        if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
             QtGui.QApplication.instance().exec_()
 
     def animation(self, frametime=10):
@@ -141,6 +149,6 @@ class Terrain(object):
         self.start()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     t = Terrain()
     t.animation()
