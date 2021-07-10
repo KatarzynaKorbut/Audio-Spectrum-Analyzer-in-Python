@@ -13,21 +13,22 @@ import time
 
 class AudioStream(object):
     FORMAT = pyaudio.paInt16
+    FORMAT_BITS = 16
     CHANNELS = 1
     RATE = 44100
     CHUNK = 1024 * 4
-    def __init__(self):
+    WF_Y_MAX = 2 ** (FORMAT_BITS - 3)
 
+    def __init__(self):
         self.app = QtGui.QApplication(sys.argv)
         self.win = pg.GraphicsWindow(title="Spectrum Analyzer")
         self.win.setWindowTitle("Spectrum Analyzer")
-        self.win.setGeometry(0, 0, 1910, 1070)
 
         self.prepare_plots()
         self.prepare_audio()
 
         # waveform and spectrum x points
-        self.x = np.arange(0, 2 * self.CHUNK, 2)
+        self.x = np.arange(0, self.CHUNK)
         self.f = np.linspace(0, self.RATE / 2, self.CHUNK // 2)
 
     def prepare_plots(self):
@@ -39,9 +40,15 @@ class AudioStream(object):
         wf_xaxis = pg.AxisItem(orientation="bottom")
         wf_xaxis.setTicks([wf_xlabels])
 
-        wf_ylabels = [(0, "0"), (127, "128"), (255, "255")]
         wf_yaxis = pg.AxisItem(orientation="left")
-        wf_yaxis.setTicks([wf_ylabels])
+        wf_yaxis.setTicks(
+            [
+                [
+                    (2 ** (self.FORMAT_BITS - 1) * v / 10, f"{10*v}%")
+                    for v in range(-10, 11)
+                ]
+            ]
+        )
 
         sp_xlabels = [
             (np.log10(10), "10"),
@@ -84,8 +91,8 @@ class AudioStream(object):
         else:
             if name == "waveform":
                 self.traces[name] = self.waveform.plot(pen="c", width=3)
-                self.waveform.setYRange(0, 255, padding=0)
-                self.waveform.setXRange(0, 2 * self.CHUNK, padding=0.005)
+                self.waveform.setYRange(-self.WF_Y_MAX, self.WF_Y_MAX, padding=0)
+                self.waveform.setXRange(0, self.CHUNK, padding=0.005)
             if name == "spectrum":
                 self.traces[name] = self.spectrum.plot(pen="m", width=3)
                 self.spectrum.setLogMode(x=True, y=True)
@@ -96,8 +103,8 @@ class AudioStream(object):
 
     def update(self):
         wf_data = self.stream.read(self.CHUNK)
-        wf_data = struct.unpack(str(2 * self.CHUNK) + "B", wf_data)
-        wf_data = np.array(wf_data, dtype="b")[::2]
+        wf_data = struct.unpack(f"{self.CHUNK}h", wf_data)
+        wf_data = np.array(wf_data)
 
         # N = self.CHUNK
         # amp = 2 * np.sqrt(2)
