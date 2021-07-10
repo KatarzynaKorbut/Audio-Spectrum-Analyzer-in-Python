@@ -5,6 +5,7 @@ import pyqtgraph as pg
 import struct
 import pyaudio
 from scipy.fftpack import fft
+from scipy.signal import welch
 
 import sys
 import time
@@ -52,7 +53,7 @@ class AudioStream(object):
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.RATE = 44100
-        self.CHUNK = 1024 * 2
+        self.CHUNK = 1024 * 4
 
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(
@@ -90,14 +91,24 @@ class AudioStream(object):
     def update(self):
         wf_data = self.stream.read(self.CHUNK)
         wf_data = struct.unpack(str(2 * self.CHUNK) + "B", wf_data)
-        wf_data = np.array(wf_data, dtype="b")[::2] + 128
+        wf_data = np.array(wf_data, dtype="b")[::2]
+
+        # N = self.CHUNK
+        # amp = 2 * np.sqrt(2)
+        # freq = 1000.0
+        # time = np.arange(N) / self.RATE
+        # wf_data = amp * np.sin(2 * np.pi * freq * time)
+
         self.set_plotdata(
             name="waveform", data_x=self.x, data_y=wf_data,
         )
 
-        sp_data = fft(np.array(wf_data, dtype="int8") - 128)
-        sp_data = np.abs(sp_data[0 : int(self.CHUNK / 2)]) * 2 / (128 * self.CHUNK)
-        self.set_plotdata(name="spectrum", data_x=self.f, data_y=sp_data)
+        # sp_data = fft(np.array(wf_data, dtype="int8"))
+        # sp_data = fft(wf_data)
+        f, sp_data = welch(wf_data, scaling="spectrum", nperseg=self.CHUNK // 3)
+
+        # sp_data = np.abs(sp_data[0 : int(self.CHUNK / 2)]) * 2 / (128 * self.CHUNK)
+        self.set_plotdata(name="spectrum", data_x=f * self.RATE, data_y=sp_data / 5)
 
     def animation(self):
         timer = QtCore.QTimer()
