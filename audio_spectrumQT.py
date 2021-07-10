@@ -4,11 +4,9 @@ import pyqtgraph as pg
 
 import struct
 import pyaudio
-from scipy.fftpack import fft
 from scipy.signal import welch
 
 import sys
-import time
 
 
 class AudioStream(object):
@@ -18,6 +16,7 @@ class AudioStream(object):
     RATE = 44100
     CHUNK = 1024 * 4
     WF_Y_MAX = 2 ** (FORMAT_BITS - 3)
+    NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "H"]
 
     def __init__(self):
         self.app = QtGui.QApplication(sys.argv)
@@ -30,6 +29,30 @@ class AudioStream(object):
         # waveform and spectrum x points
         self.x = np.arange(0, self.CHUNK)
         self.f = np.linspace(0, self.RATE / 2, self.CHUNK // 2)
+
+    def piano_key_to_note(self, key):
+        # key octave semitone
+        #   0     -3        9
+        #   1     -3       10
+        #   2     -3       11
+        #   3     -2        0
+        #   4     -2        1
+        #  27      0        0
+        #  28      0        1
+        #  29      0        2
+        return (key - 27) // 12, (key - 27) % 12
+
+    def note_to_freq(self, octave, semitone):
+        """Zamiana oktawy i półtonu na częśtotliwość dźwięku
+        octave == 1 --> oktawa razkreślna
+        semitone == 0 --> dźwięk C
+        """
+        freq = 440.0 * 2 ** ((semitone - 9) / 12)
+        freq *= 2 ** (octave - 1)
+        return freq
+
+    def note_to_description(self, octave, semitone):
+        return f"{self.NOTE_NAMES[semitone]}{octave}"
 
     def prepare_plots(self):
         # pyqtgraph stuff
@@ -50,12 +73,14 @@ class AudioStream(object):
             ]
         )
 
-        sp_xlabels = [
-            (np.log10(10), "10"),
-            (np.log10(100), "100"),
-            (np.log10(1000), "1000"),
-            (np.log10(22050), "22050"),
-        ]
+        sp_xlabels = []
+        for key in range(88):
+            octave, semitone = self.piano_key_to_note(key)
+            freq = self.note_to_freq(octave, semitone)
+            description = self.note_to_description(octave, semitone)
+            if self.NOTE_NAMES[semitone] in ("C", "E", "A"):
+                sp_xlabels.append((np.log10(freq), description))
+
         sp_xaxis = pg.AxisItem(orientation="bottom")
         sp_xaxis.setTicks([sp_xlabels])
 
@@ -95,8 +120,8 @@ class AudioStream(object):
                 self.waveform.setXRange(0, self.CHUNK, padding=0.005)
             if name == "spectrum":
                 self.traces[name] = self.spectrum.plot(pen="m", width=3)
-                self.spectrum.setLogMode(x=True, y=True)
-                self.spectrum.setYRange(-4, 0, padding=0)
+                self.spectrum.setLogMode(x=True, y=False)
+                # self.spectrum.setYRange(0, 2 * self.WF_Y_MAX, padding=0)
                 self.spectrum.setXRange(
                     np.log10(20), np.log10(self.RATE / 2), padding=0.005
                 )
