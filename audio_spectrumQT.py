@@ -84,15 +84,23 @@ class AudioStream(object):
         sp_xaxis = pg.AxisItem(orientation="bottom")
         sp_xaxis.setTicks([sp_xlabels])
 
-        self.waveform = self.win.addPlot(
+        waveform = self.win.addPlot(
             title="WAVEFORM",
             row=1,
             col=1,
             axisItems={"bottom": wf_xaxis, "left": wf_yaxis},
         )
-        self.spectrum = self.win.addPlot(
+        waveform.setXRange(0, self.CHUNK, padding=0.005)
+        waveform.setYRange(-self.WF_Y_MAX, self.WF_Y_MAX, padding=0)
+        self.wf_plot = waveform.plot(pen="c", width=3)
+
+        spectrum = self.win.addPlot(
             title="SPECTRUM", row=2, col=1, axisItems={"bottom": sp_xaxis},
         )
+        spectrum.setLogMode(x=True, y=False)
+        spectrum.setXRange(np.log10(20), np.log10(self.RATE / 2), padding=0.005)
+        # spectrum.setYRange(0, 2 * self.WF_Y_MAX, padding=0)
+        self.sp_plot = spectrum.plot(pen="m", width=3)
 
     def prepare_audio(self):
         # pyaudio stuff
@@ -110,43 +118,16 @@ class AudioStream(object):
         if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
             QtGui.QApplication.instance().exec_()
 
-    def set_plotdata(self, name, data_x, data_y):
-        if name in self.traces:
-            self.traces[name].setData(data_x, data_y)
-        else:
-            if name == "waveform":
-                self.traces[name] = self.waveform.plot(pen="c", width=3)
-                self.waveform.setYRange(-self.WF_Y_MAX, self.WF_Y_MAX, padding=0)
-                self.waveform.setXRange(0, self.CHUNK, padding=0.005)
-            if name == "spectrum":
-                self.traces[name] = self.spectrum.plot(pen="m", width=3)
-                self.spectrum.setLogMode(x=True, y=False)
-                # self.spectrum.setYRange(0, 2 * self.WF_Y_MAX, padding=0)
-                self.spectrum.setXRange(
-                    np.log10(20), np.log10(self.RATE / 2), padding=0.005
-                )
+    def read_samples(self):
+        samples_bytes = self.stream.read(self.CHUNK)
+        return struct.unpack(f"{self.CHUNK}h", samples_bytes)
 
     def update(self):
-        wf_data = self.stream.read(self.CHUNK)
-        wf_data = struct.unpack(f"{self.CHUNK}h", wf_data)
-        wf_data = np.array(wf_data)
+        samples = self.read_samples()
+        self.wf_plot.setData(self.x, samples)
 
-        # N = self.CHUNK
-        # amp = 2 * np.sqrt(2)
-        # freq = 1000.0
-        # time = np.arange(N) / self.RATE
-        # wf_data = amp * np.sin(2 * np.pi * freq * time)
-
-        self.set_plotdata(
-            name="waveform", data_x=self.x, data_y=wf_data,
-        )
-
-        # sp_data = fft(np.array(wf_data, dtype="int8"))
-        # sp_data = fft(wf_data)
-        f, sp_data = welch(wf_data, scaling="spectrum", nperseg=self.CHUNK // 3)
-
-        # sp_data = np.abs(sp_data[0 : int(self.CHUNK / 2)]) * 2 / (128 * self.CHUNK)
-        self.set_plotdata(name="spectrum", data_x=f * self.RATE, data_y=sp_data / 5)
+        f, sp_data = welch(samples, scaling="spectrum", nperseg=self.CHUNK // 3)
+        self.sp_plot.setData(f * self.RATE, sp_data)
 
     def animation(self):
         timer = QtCore.QTimer()
