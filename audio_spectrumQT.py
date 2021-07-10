@@ -12,15 +12,28 @@ import time
 
 
 class AudioStream(object):
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 1
+    RATE = 44100
+    CHUNK = 1024 * 4
     def __init__(self):
 
-        # pyqtgraph stuff
-        pg.setConfigOptions(antialias=True)
-        self.traces = dict()
         self.app = QtGui.QApplication(sys.argv)
         self.win = pg.GraphicsWindow(title="Spectrum Analyzer")
         self.win.setWindowTitle("Spectrum Analyzer")
-        self.win.setGeometry(5, 115, 1910, 1070)
+        self.win.setGeometry(0, 0, 1910, 1070)
+
+        self.prepare_plots()
+        self.prepare_audio()
+
+        # waveform and spectrum x points
+        self.x = np.arange(0, 2 * self.CHUNK, 2)
+        self.f = np.linspace(0, self.RATE / 2, self.CHUNK // 2)
+
+    def prepare_plots(self):
+        # pyqtgraph stuff
+        pg.setConfigOptions(antialias=True)
+        self.traces = dict()
 
         wf_xlabels = [(0, "0"), (2048, "2048"), (4096, "4096")]
         wf_xaxis = pg.AxisItem(orientation="bottom")
@@ -49,12 +62,8 @@ class AudioStream(object):
             title="SPECTRUM", row=2, col=1, axisItems={"bottom": sp_xaxis},
         )
 
+    def prepare_audio(self):
         # pyaudio stuff
-        self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 44100
-        self.CHUNK = 1024 * 4
-
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(
             format=self.FORMAT,
@@ -64,9 +73,6 @@ class AudioStream(object):
             output=True,
             frames_per_buffer=self.CHUNK,
         )
-        # waveform and spectrum x points
-        self.x = np.arange(0, 2 * self.CHUNK, 2)
-        self.f = np.linspace(0, self.RATE / 2, self.CHUNK // 2)
 
     def start(self):
         if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
