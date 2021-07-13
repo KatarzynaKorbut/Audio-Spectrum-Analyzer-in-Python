@@ -4,6 +4,7 @@ import pyqtgraph as pg
 
 import struct
 import pyaudio
+from scipy import fftpack
 from scipy.signal import welch
 
 import sys
@@ -28,7 +29,7 @@ class AudioStream(object):
 
         # waveform and spectrum x points
         self.x = np.arange(0, self.CHUNK)
-        self.f = np.linspace(0, self.RATE / 2, self.CHUNK // 2)
+        self.f = np.linspace(0, self.RATE, self.CHUNK)
 
     def piano_key_to_note(self, key):
         # key octave semitone
@@ -99,7 +100,7 @@ class AudioStream(object):
         )
         spectrum.setLogMode(x=True, y=False)
         spectrum.setXRange(np.log10(20), np.log10(self.RATE / 2), padding=0.005)
-        # spectrum.setYRange(0, 2 * self.WF_Y_MAX, padding=0)
+        spectrum.setYRange(0, 1e8, padding=0)
         self.sp_plot = spectrum.plot(pen="m", width=3)
 
     def prepare_audio(self):
@@ -126,8 +127,12 @@ class AudioStream(object):
         samples = self.read_samples()
         self.wf_plot.setData(self.x, samples)
 
-        f, sp_data = welch(samples, scaling="spectrum", nperseg=self.CHUNK // 3)
-        self.sp_plot.setData(f * self.RATE, sp_data)
+        if False:
+            sp_data = np.abs(fftpack.fft(samples))
+            self.sp_plot.setData(self.f, sp_data)
+        else:
+            f, sp_data = welch(samples, scaling="spectrum", nperseg=self.CHUNK // 2)
+            self.sp_plot.setData(f * self.RATE, sp_data)
 
     def animation(self):
         timer = QtCore.QTimer()
